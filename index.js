@@ -31,51 +31,65 @@ class CasbinClient {
   async initializeAdapterAndEnforcer(connectString, modelText) {
     return new Promise(async (resolve, reject) => {
       try {
-        // Create adapter
-        const adapterResponse = await new Promise((resolve, reject) => {
-          this.grpcClient.NewAdapter(
-            {
-              adapterName: "postgres",
-              driverName: "postgres",
-              connectString: connectString,
-              dbSpecified: true,
-            },
-            (error, response) => {
-              if (error) {
-                console.error("Adapter creation error:", error);
-                reject(error);
-              } else {
-                resolve(response);
+        // Check if adapterHandler is already set
+        if (!this.adapterHandler) {
+          // Create adapter
+          const adapterResponse = await new Promise((resolve, reject) => {
+            this.grpcClient.NewAdapter(
+              {
+                adapterName: "postgres",
+                driverName: "postgres",
+                connectString: connectString,
+                dbSpecified: true,
+              },
+              (error, response) => {
+                if (error) {
+                  console.error("Adapter creation error:", error);
+                  reject(error);
+                } else {
+                  resolve(response);
+                }
               }
-            }
-          );
-        });
+            );
+          });
 
-        this.adapterHandler = adapterResponse.handler;
-        console.log("Adapter initialized with handler:", this.adapterHandler);
+          this.adapterHandler = adapterResponse.handler;
+          console.log("Adapter initialized with handler:", this.adapterHandler);
+        } else {
+          console.log("Using existing adapter handler:", this.adapterHandler);
+        }
 
-        // Create enforcer with the provided modelText
-        const enforcerResponse = await new Promise((resolve, reject) => {
-          this.grpcClient.NewEnforcer(
-            {
-              modelText: modelText,
-              adapterHandle: this.adapterHandler,
-              enableAcceptJsonRequest: true,
-            },
-            (error, response) => {
-              if (error) {
-                console.error("Enforcer creation error:", error);
-                reject(error);
-              } else {
-                resolve(response);
+        // Check if enforcerHandler is already set
+        if (!this.enforcerHandler) {
+          // Create enforcer with the provided modelText
+          const enforcerResponse = await new Promise((resolve, reject) => {
+            this.grpcClient.NewEnforcer(
+              {
+                modelText: modelText,
+                adapterHandle: this.adapterHandler,
+                enableAcceptJsonRequest: true,
+              },
+              (error, response) => {
+                if (error) {
+                  console.error("Enforcer creation error:", error);
+                  reject(error);
+                } else {
+                  resolve(response);
+                }
               }
-            }
+            );
+          });
+
+          this.enforcerHandler = enforcerResponse.handler;
+          console.log(
+            "Enforcer initialized with handler:",
+            this.enforcerHandler
           );
-        });
+        } else {
+          console.log("Using existing enforcer handler:", this.enforcerHandler);
+        }
 
-        this.enforcerHandler = enforcerResponse.handler;
-        console.log("Enforcer initialized with handler:", this.enforcerHandler);
-
+        // Load policy
         await new Promise((resolve, reject) => {
           this.grpcClient.LoadPolicy(
             { handler: this.enforcerHandler },
